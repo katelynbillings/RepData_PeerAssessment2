@@ -1,20 +1,11 @@
----
-title: "Economic and Public Health Impact of Severe Weather"
-output: html_document
----
+#Economic and Public Health Impact of Severe Weather
 
 Author: Katelyn Billings
-
 Publisher: Coursera
-
 Education Institution: Johns Hopkins
-
 Specialisation: Data Science
-
 Course: Reproducible Research
-
 Assignment: Course Project
-
 Date: 2015/Jan
 
 ##Description
