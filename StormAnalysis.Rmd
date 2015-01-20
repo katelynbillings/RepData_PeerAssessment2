@@ -9,31 +9,44 @@ output:
 
 ###Synopsis
 
+This report aims to identify the types of storms that cause the most harm to 
+public health and have the greatest economic consequences. To investigate this 
+matter, storm data from the U.S. National Oceanic and Atmospheric Administration
+were analyzed. The data spanned the years 1950-2011 and documented when and 
+where the storms occurred and estimated the number of fatalities and injuries 
+and any crop or property damages. From the data it was identified that 
+**tornados are the greatest cause of harm to public health** (as defined as the 
+number of fatalities and injuries per year) while **hurricanes and hurricane/
+typhoons have the greatest economic consequences** (as defined by the cost of 
+property and crop damage per year).
+
 ###Key Questions
 
-The data analysis addresses the following questions:
+The following analysis addresses the following questions:
 
-1. Across the United States, which types of events (as indicated in the EVTYPE 
-variable) are most harmful with respect to population health?
+1. Across the United States, which types of events are most harmful with respect 
+to population health?
 
 2. Across the United States, which types of events have the greatest economic 
 consequences?
 
-The analysis should help someone prioritize resources for different types of 
+This report should help someone prioritize resources for different types of 
 events.
 
 ###Data Processing
 
 From the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm 
-database, we obtained data on major storms and weather events in the United 
-States, including when and where they occur, as well as estimates of any 
-fatalities, injuries, and property damage.
+database, [data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2) 
+on major storms and weather events in the United States were obtained for the 
+period spanning 1950-2011. The data documents when and where the storms occur,
+as well as estimates of fatalities, injuries and any property or crop damage.
 
 #### Data Download
 
-We first check if the data has already been downloaded from the 
-[NOAA Storm Database](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2).
-If it does not exist, the file is downloaded and unzipped.
+To begin the analysis, it is important to check if the 
+[storm data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2) 
+is already in the working directory. If it is not in the working directory, the 
+file is downloaded and unzipped.
 
 ```{r Get Data}
 if(!file.exists("./repdata-data-StormData.csv")){
@@ -47,8 +60,8 @@ if(!file.exists("./repdata-data-StormData.csv")){
 
 ####Read in the Data
 
-We then read in the raw comma-separated-value file included in the zip archive.
-NA values are indicated by the string "NA" or empty strings.
+The raw comma-separated-value file included in the zip archive must then be read
+into memory. NA values are indicated by the string "NA" or empty strings.
 
 ```{r Read Data, cache=TRUE}
 originalStormData <- read.csv("./repdata-data-StormData.csv", 
@@ -57,62 +70,66 @@ originalStormData <- read.csv("./repdata-data-StormData.csv",
 
 A quick look at the data set:
 
-```{r}
+```{r Structure Original Data}
 str(originalStormData)
 ```
 
 ####Clean the data
 
-We need to load any dependencies that will be required for data analysis.
+Any dependencies that are necessary for data analysis must be loaded.
 
-```{r}
+```{r Load Dependencies}
 library(lubridate, warn.conflicts = FALSE, quietly = TRUE)
 library(plyr, warn.conflicts = FALSE, quietly = TRUE)
 library(dplyr, warn.conflicts = FALSE, quietly = TRUE)
 ```
 
-Since we are only concerned about which types of storms have the greatest 
-economic consequences and impact on public health, only a subset of the data 
-will be retained: the storm type, fatalities/injuries, and property/crop damages.
+Since this analysis is only concerned about which types of storms have the 
+greatest economic consequences and impact on public health, only a subset of the 
+data is retained: the storm type, fatalities/injuries, and property/crop 
+damages.
 
-```{r Working Data}
+```{r Subset data}
 
 stormData <- select(originalStormData, date = BGN_DATE, storm.type = EVTYPE, 
                     fatalities = FATALITIES, injuries = INJURIES, 
                     property.damage = PROPDMG, property.exp = PROPDMGEXP, 
                     crop.damage = CROPDMG, crop.exp = CROPDMGEXP)
 stormData$date <- mdy_hms(stormData$date)
+num.years <- length(unique(year(stormData$date)))
 
 ```
 
 The structure of the data is now:
 
-```{r}
+```{r Data Structure}
 str(stormData)
 ```
 
-We now need to take into account the fact that property and crop damage have a 
-corresponding exponent/multiplier associated with them. Let's look at the levels
-and frequencies of the property and crop exponents:
+Property and crop damage have a corresponding exponent/multiplier associated 
+with them that must be accounted for. The levels and frequencies of the property 
+and crop exponents are:
 
-```{r}
+```{r Summary of Exponent Factors}
 table(stormData$property.exp, useNA = "ifany")
 table(stormData$crop.exp, useNA = "ifany")
 ```
 
-It is unclear what factor levels -, ?, + mean so we will remove the data that
-contain these factor levels:
+It is unclear what factor levels -, ?, + mean. Moreover, this subset of data
+represents a very small proportion of the overall data. As a result, the data 
+that contain these factor levels will be removed:
 
-```{r}
+```{r Remove Unclear Factor Levels}
 stormData <- stormData[grep("\\-|\\?|\\+", stormData$property.exp, 
                        invert = TRUE), ]
 stormData <- stormData[grep("\\?", stormData$crop.exp, invert = TRUE), ]
 ```
 
-We now need to reassign the character levels to their corresponding numeric 
-counterparts: h/H = 2, k/K = 3, m/M = 6, b/B = 9, NA = 0
+The character based factor levels need to be reassigned to the corresponding 
+numeric counterparts (eg. h/H stands for hundred so it gets reassigned to 2 
+since 100 = 10^2; likewise, k/K = 3, m/M = 6, b/B = 9, NA = 0)
 
-```{r}
+```{r Reassign factor levels}
 # Reassign levels for property.exp, convert to a numeric
 stormData$property.exp <- mapvalues(stormData$property.exp, 
                                     from = c("h", "H", "K", "m", "M", "B"),
@@ -128,26 +145,27 @@ stormData[which(is.na(stormData$crop.exp)), 8] <- "0"
 stormData$crop.exp <- as.numeric(as.character(stormData$crop.exp))
 ```
 
-Let's make sure the property and crop exponents were successfully reassigned:
+A verification that the property and crop exponents were successfully 
+reassigned:
 
-```{r}
+```{r Summary Reassigned Exponents}
 table(stormData$property.exp, useNA = "ifany")
 table(stormData$crop.exp, useNA = "ifany")
 ```
 
-Finally, we need to multiply the property damage by their corresponding 
-exponents then remove the .exp variables.
+The property and crop damages must then be scaled by the corresponding 
+exponents. The .exp variables are then dropped.
 
-```{r}
+```{r Scale Damages}
 stormData <- mutate(stormData, 
                     property.damage = property.damage * 10^property.exp,
                     crop.damage = crop.damage * 10^property.exp) %>%
              select(-c(property.exp, crop.exp))
 ```
 
-Our data now looks like:
+The data now looks like:
 
-```{r}
+```{r Revised Data Summary}
 str(stormData)
 summary(stormData)
 ```
@@ -156,39 +174,48 @@ summary(stormData)
 
 ####Impact on Public Health
 
-We need to figure out which types of events are most harmful with respect to 
-population health. First let's look at what types of events occur most often.
+The first goal of this analysis is to identify which types of events are most 
+harmful with respect to population health. Since the data spans `r num.years` 
+years and this analysis looks to inform decisions on a yearly basis, all storm 
+data is scaled to a per year amount (total amount/number ofyears).
 
-```{r}
+A look at what types of events occur most often on a per year basis:
+
+```{r Most Frequent Events}
 num.events <- as.data.frame(table(as.character(stormData$storm.type)))
+num.events$Freq <- round(num.events$Freq/num.years) 
 arrange(num.events, desc(Freq))[1:10, ]
 ```
 
-Let's look at the top ten causes of fatalities and injuries: 
+The top ten causes of fatalities/year are: 
 
 ```{r fatalities}
-# Get top ten causes of fatalities
+# Get top ten causes of fatalities/year
 health.fatalities <- group_by(stormData, storm.type) %>%
                      summarize(fatalities = sum(fatalities, na.rm = TRUE))
+health.fatalities$fatalities <- round(health.fatalities$fatalities/num.years)
 topten.fatalities <- arrange(health.fatalities, desc(fatalities))[1:10, ]
 topten.fatalities
 ```
 
+The top ten causes of injuries/year are:
+
 ```{r injuries}
-# Get top ten causes of injuries
+# Get top ten causes of injuries/year
 health.injuries <- group_by(stormData, storm.type) %>%
                    summarize(injuries = sum(injuries, na.rm = TRUE))
+health.injuries$injuries <- round(health.injuries$injuries/num.years)
 topten.injuries <- arrange(health.injuries, desc(injuries))[1:10, ]
 topten.injuries
 ```
 
-Finally, let's look at the top ten causes of all health problems (fatalities +
-injuries) and display the results in a bar plot:
+The top ten causes of all health problems per year (fatalities + injuries) are:
 
 ```{r total problems}
 # Get top ten causes of health problems
 health.problems <- group_by(stormData, storm.type) %>%
                    summarize(problems = sum(injuries + fatalities, na.rm = TRUE))
+health.problems$problems <- round(health.problems$problems/num.years)
 topten.problems <- arrange(health.problems, desc(problems))[1:10, ]
 topten.problems
 ```
@@ -200,50 +227,59 @@ par(mfcol=c(1,1), mar = c(7,6,4,4), las = 2, cex.main = 1, cex.axis = 0.9,
     mgp = c(5, 1, 0))
 with(topten.problems, barplot(problems, names.arg = storm.type,
                               xlab = "Storm Type",
-                              ylab = "Number of Injuries + Fatalities",
-                              main = "Top 10 Causes of Injuries and Fatalities Combined",
+                              ylab = "Number of Injuries + Fatalities Per Year",
+                              main = paste0("Top 10 Causes of Injuries and ",
+                                            "Fatalities Combined"),
                               cex.names = 0.6,
                               col = brewer.pal(10, "Set3")))
 ```
 
-From the plot above, we see that `r topten.problems[1,1]` is the most harmful
+The plot above indicates that `r topten.problems[1,1]` is the most harmful
 type of event to personal health at `r topten.problems[1,2]` injuries and 
-fatalities combined. The level of harm drops off afterwards, with
+fatalities per year. The level of harm drops off afterwards, with
 `r topten.problems[2,1]` being the second leading cause of harm with 
 `r topten.problems[2,2]` health incidents.
 
 
 ####Greatest Economic Consequences
 
-In terms of economic consequences, we are concerned with the amount of property
-and crop damage caused by a given storm type. Let's first look at the top ten 
-causes of property and crop damage separately ($, billions):
+The second goal of this analysis is to identify the types of storms that have
+the greatest economic consequences. For this analysis, economic consequences
+refers to property and crop damage (in millions of dollars). Once again all
+storm data is scaled to a per year basis. 
+
+The top ten causes of property damage per year ($, millions) are:
 
 ```{r property damage}
 # Get top ten causes of property damage ($, billions)
 econ.property <- group_by(stormData, storm.type) %>%
-                 summarize(property.damage = sum(property.damage/10^9, 
+                 summarize(property.damage = sum(property.damage/10^6, 
                                                  na.rm = TRUE))
+econ.property$property.damage <- round(econ.property$property.damage/num.years)
 topten.property <- arrange(econ.property, desc(property.damage))[1:10, ]
 topten.property
 ```
 
+The top ten causes of crop damage per year ($, millions) are:
+
 ```{r crop damage}
-# Get top ten causes of crop damage ($, billions)
+# Get top ten causes of crop damage ($, millions)
 econ.crop <- group_by(stormData, storm.type) %>%
-             summarize(crop.damage = sum(crop.damage/10^9, na.rm = TRUE))
+             summarize(crop.damage = sum(crop.damage/10^6, na.rm = TRUE))
+econ.crop$crop.damage <- round(econ.crop$crop.damage/num.years)
 topten.crop <- arrange(econ.crop, desc(crop.damage))[1:10, ]
 topten.crop
 ```
 
-Finally let's look at the top ten causes of property and crop damage combined
-($, billions) and display the results in a bar plot:
+The top ten causes of property and crop damage combined per year ($, millions) 
+are:
 
 ```{r total damage}
-# Get the top ten causes of total damage ($, billions)
+# Get the top ten causes of total damage ($, millions)
 econ.total <- group_by(stormData, storm.type) %>%
               summarize(total.damage = sum(property.damage + crop.damage, 
-                                           na.rm = TRUE)/10^9)
+                                           na.rm = TRUE)/10^6)
+econ.total$total.damage <- round(econ.total$total.damage/num.years)
 topten.total <- arrange(econ.total, desc(total.damage))[1:10, ]
 topten.total
 ```
@@ -254,14 +290,15 @@ par(mfcol=c(1,1), mar = c(7,6,4,4), las = 2, cex.main = 1, cex.axis = 0.9,
     mgp = c(5, 1, 0))
 with(topten.total, barplot(total.damage, names.arg = storm.type,
                            xlab = "Storm Type",
-                           ylab = "Property + Crop Damage ($, billions)",
+                           ylab = paste0("Property + Crop Damage Per Year ",
+                                         "\n($, millions)"),
                            main = "Top 10 Causes of Property and Crop Damage",
                            cex.names = 0.6,
                            col = brewer.pal(10, "Set3")))
 ```
 
-From the plot above, we see that `r topten.total[1,1]` causes the most damage 
-economically with `r topten.total[1,2]` billion dollars of damage to property
-and crops. `r topten.total[2,1]` is the second most costly type of
-storm with `r topten.total[2,2]` billion dollars of damage to property and
-crops.
+The plot above indicates that `r topten.total[1,1]` causes the most damage 
+economically with `r topten.total[1,2]` million dollars of damage to property
+and crops per year. `r topten.total[2,1]` is the second most costly type of
+storm with `r topten.total[2,2]` million dollars of damage to property and
+crops per year.
