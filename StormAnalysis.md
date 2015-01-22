@@ -54,22 +54,29 @@ file is downloaded and unzipped.
 
 
 ```r
-if(!file.exists("./repdata-data-StormData.csv")){
-    fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
-    download.file(fileUrl, destfile = "./downloadedData", method = "curl")
-    dateDownloaded <<- date()
-    unzip("./downloadedData")
+if(!file.exists("./repdata-data-StormData.csv.bz2")){
+    if(!file.exists("./repdata-data-StormData.csv")){
+        fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+        download.file(fileUrl, destfile = "./repdata-data-StormData.csv.bz2",
+                      method = "curl")
+        dateDownloaded <<- date()
+    }
 }
 ```
 
 
 ####Read in the Data
 
-The raw comma-separated-value file included in the zip archive must then be read
-into memory. NA values are indicated by the string "NA" or empty strings.
+The downloaded data comes in the form of a comma-separated-value file, 
+compressed via the bzip2 algorithm. It must be unzipped if it hasn't been 
+already and then read into memory. NA values are indicated by the string "NA" or 
+empty strings.
 
 
 ```r
+if(!file.exists("./repdata-data-StormData.csv")){
+    system("bunzip2 repdata-data-StormData.csv.bz2")
+}
 originalStormData <- read.csv("./repdata-data-StormData.csv", 
                               na.strings = c("NA", ""))
 ```

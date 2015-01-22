@@ -88,17 +88,22 @@ img {
 <div id="data-download" class="section level4">
 <h4>Data Download</h4>
 <p>To begin the analysis, it is important to check if the <a href="https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2">storm data</a> is already in the working directory. If it is not in the working directory, the file is downloaded and unzipped.</p>
-<pre class="r"><code>if(!file.exists(&quot;./repdata-data-StormData.csv&quot;)){
-    fileUrl &lt;- &quot;https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2&quot;
-    download.file(fileUrl, destfile = &quot;./downloadedData&quot;, method = &quot;curl&quot;)
-    dateDownloaded &lt;&lt;- date()
-    unzip(&quot;./downloadedData&quot;)
+<pre class="r"><code>if(!file.exists(&quot;./repdata-data-StormData.csv.bz2&quot;)){
+    if(!file.exists(&quot;./repdata-data-StormData.csv&quot;)){
+        fileUrl &lt;- &quot;https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2&quot;
+        download.file(fileUrl, destfile = &quot;./repdata-data-StormData.csv.bz2&quot;,
+                      method = &quot;curl&quot;)
+        dateDownloaded &lt;&lt;- date()
+    }
 }</code></pre>
 </div>
 <div id="read-in-the-data" class="section level4">
 <h4>Read in the Data</h4>
-<p>The raw comma-separated-value file included in the zip archive must then be read into memory. NA values are indicated by the string “NA” or empty strings.</p>
-<pre class="r"><code>originalStormData &lt;- read.csv(&quot;./repdata-data-StormData.csv&quot;, 
+<p>The downloaded data comes in the form of a comma-separated-value file, compressed via the bzip2 algorithm. It must be unzipped if it hasn’t been already and then read into memory. NA values are indicated by the string “NA” or empty strings.</p>
+<pre class="r"><code>if(!file.exists(&quot;./repdata-data-StormData.csv&quot;)){
+    system(&quot;bunzip2 repdata-data-StormData.csv.bz2&quot;)
+}
+originalStormData &lt;- read.csv(&quot;./repdata-data-StormData.csv&quot;, 
                               na.strings = c(&quot;NA&quot;, &quot;&quot;))</code></pre>
 <p>A quick look at the data set:</p>
 <pre class="r"><code>str(originalStormData)</code></pre>
